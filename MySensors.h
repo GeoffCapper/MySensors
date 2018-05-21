@@ -6,7 +6,7 @@
  * network topology allowing messages to be routed to nodes.
  *
  * Created by Henrik Ekblad <henrik.ekblad@mysensors.org>
- * Copyright (C) 2013-2017 Sensnology AB
+ * Copyright (C) 2013-2018 Sensnology AB
  * Full contributor list: https://github.com/mysensors/Arduino/graphs/contributors
  *
  * Documentation: http://www.mysensors.org
@@ -41,34 +41,44 @@
 #include <Arduino.h>
 #endif
 
+// general macros
+#if !defined(_BV)
+#define _BV(x) (1<<(x))	//!< _BV
+#endif
+
 #include "MyConfig.h"
 #include "core/MySplashScreen.h"
 #include "core/MySensorsCore.h"
 
-// OTA Debug, have to defined before HAL
+// OTA Debug, has to be defined before HAL
 #if defined(MY_OTA_LOG_SENDER_FEATURE) || defined(MY_OTA_LOG_RECEIVER_FEATURE)
 #include "core/MyOTALogging.h"
 #endif
 
 // HARDWARE
+#include "hal/architecture/MyHw.h"
 #if defined(ARDUINO_ARCH_ESP8266)
-#include "hal/architecture/MyHwESP8266.cpp"
+#include "hal/architecture/ESP8266/MyHwESP8266.cpp"
+#elif defined(ARDUINO_ARCH_ESP32)
+#include "hal/architecture/ESP32/MyHwESP32.cpp"
 #elif defined(ARDUINO_ARCH_AVR)
 #include "drivers/AVR/DigitalWriteFast/digitalWriteFast.h"
-#include "hal/architecture/MyHwAVR.cpp"
+#include "hal/architecture/AVR/MyHwAVR.cpp"
 #elif defined(ARDUINO_ARCH_SAMD)
 #include "drivers/extEEPROM/extEEPROM.cpp"
-#include "hal/architecture/MyHwSAMD.cpp"
+#include "hal/architecture/SAMD/MyHwSAMD.cpp"
 #elif defined(ARDUINO_ARCH_STM32F1)
-#include "hal/architecture/MyHwSTM32F1.cpp"
+#include "hal/architecture/STM32F1/MyHwSTM32F1.cpp"
 #elif defined(ARDUINO_ARCH_NRF5) || defined(ARDUINO_ARCH_NRF52)
 #include "drivers/NVM/VirtualPage.cpp"
 #include "drivers/NVM/NVRAM.cpp"
-#include "hal/architecture/MyHwNRF5.cpp"
+#include "hal/architecture/NRF5/MyHwNRF5.cpp"
 #elif defined(__arm__) && defined(TEENSYDUINO)
-#include "hal/architecture/MyHwTeensy3.cpp"
+#include "hal/architecture/Teensy3/MyHwTeensy3.cpp"
 #elif defined(__linux__)
-#include "hal/architecture/MyHwLinuxGeneric.cpp"
+#include "hal/architecture/Linux/MyHwLinuxGeneric.cpp"
+#else
+#error Hardware abstraction not defined (unsupported platform)
 #endif
 
 // OTA Debug second part, depends on HAL
@@ -120,17 +130,19 @@ MY_DEFAULT_RX_LED_PIN in your sketch instead to enable LEDs
 
 // FLASH
 #if defined(MY_OTA_FIRMWARE_FEATURE)
+#ifndef MCUBOOT_PRESENT
 #if defined(MY_OTA_USE_I2C_EEPROM)
 #include "drivers/I2CEeprom/I2CEeprom.cpp"
 #else
 #include "drivers/SPIFlash/SPIFlash.cpp"
+#endif
 #endif
 #include "core/MyOTAFirmwareUpdate.cpp"
 #endif
 
 // GATEWAY - TRANSPORT
 #if defined(MY_CONTROLLER_IP_ADDRESS) || defined(MY_CONTROLLER_URL_ADDRESS)
-#define MY_GATEWAY_CLIENT_MODE
+#define MY_GATEWAY_CLIENT_MODE	//!< gateway client mode
 #endif
 
 #if defined(MY_USE_UDP) && !defined(MY_GATEWAY_CLIENT_MODE)
@@ -141,12 +153,17 @@ MY_DEFAULT_RX_LED_PIN in your sketch instead to enable LEDs
 #if defined(MY_SENSOR_NETWORK)
 // We assume that a gateway having a radio also should act as repeater
 #define MY_REPEATER_FEATURE
-
 #endif
+
 // GATEWAY - COMMON FUNCTIONS
-// We support MQTT Client using W5100, ESP8266 and Linux
-#if !defined(MY_GATEWAY_CLIENT_MODE)
+// We support MQTT Client using W5100, ESP8266, GSM modems supported by TinyGSM library and Linux
+#if !defined(MY_GATEWAY_CLIENT_MODE) && !defined(MY_GATEWAY_TINYGSM)
 #error You must specify MY_CONTROLLER_IP_ADDRESS or MY_CONTROLLER_URL_ADDRESS
+#endif
+
+#if defined(MY_GATEWAY_TINYGSM) && !defined(MY_GATEWAY_MQTT_CLIENT)
+// TinyGSM currently only supports MQTTClient mode.
+#error MY_GATEWAY_TINYGSM only works with MY_GATEWAY_MQTT_CLIENT
 #endif
 
 #if !defined(MY_MQTT_PUBLISH_TOPIC_PREFIX)
@@ -163,6 +180,10 @@ MY_DEFAULT_RX_LED_PIN in your sketch instead to enable LEDs
 
 #include "core/MyGatewayTransport.cpp"
 #include "core/MyProtocolMySensors.cpp"
+
+#if defined(MY_GATEWAY_TINYGSM)
+#include "drivers/TinyGSM/TinyGsmClient.h"
+#endif
 
 #if defined(MY_GATEWAY_LINUX)
 #include "drivers/Linux/EthernetClient.h"
@@ -182,11 +203,12 @@ MY_DEFAULT_RX_LED_PIN in your sketch instead to enable LEDs
 // We assume that a gateway having a radio also should act as repeater
 #define MY_REPEATER_FEATURE
 #endif
+
 #if !defined(MY_PORT)
-#error You must define MY_PORT (controller or gatway port to open)
+#error You must define MY_PORT (controller or gateway port to open)
 #endif
-#if defined(MY_GATEWAY_ESP8266)
-// GATEWAY - ESP8266
+#if defined(MY_GATEWAY_ESP8266) || defined(MY_GATEWAY_ESP32)
+// GATEWAY - ESP8266 / ESP32
 #include "core/MyGatewayTransportEthernet.cpp"
 #elif defined(MY_GATEWAY_LINUX)
 // GATEWAY - Generic Linux
@@ -248,7 +270,7 @@ MY_DEFAULT_RX_LED_PIN in your sketch instead to enable LEDs
 
 // SANITY CHECK
 #if defined(MY_REPEATER_FEATURE) || defined(MY_GATEWAY_FEATURE)
-#define MY_TRANSPORT_SANITY_CHECK
+#define MY_TRANSPORT_SANITY_CHECK		//!< enable regular transport sanity checks
 #endif
 
 // TRANSPORT INCLUDES
@@ -262,13 +284,13 @@ MY_DEFAULT_RX_LED_PIN in your sketch instead to enable LEDs
 #endif
 
 #if defined(MY_TRANSPORT_DONT_CARE_MODE)
-#error This directive is deprecated, set MY_TRANSPORT_WAIT_READY_MS instead!
+#error MY_TRANSPORT_DONT_CARE_MODE is deprecated, set MY_TRANSPORT_WAIT_READY_MS instead!
 #endif
 
 // RAM ROUTING TABLE
 #if defined(MY_RAM_ROUTING_TABLE_FEATURE) && defined(MY_REPEATER_FEATURE)
 // activate feature based on architecture
-#if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_SAMD) || defined(ARDUINO_ARCH_NRF5) || defined(__linux__)
+#if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32) || defined(ARDUINO_ARCH_SAMD) || defined(ARDUINO_ARCH_NRF5) || defined(ARDUINO_ARCH_STM32F1) || defined(TEENSYDUINO) || defined(__linux__)
 #define MY_RAM_ROUTING_TABLE_ENABLED
 #elif defined(ARDUINO_ARCH_AVR)
 #if defined(__avr_atmega1280__) || defined(__avr_atmega1284__) || defined(__avr_atmega2560__)
@@ -280,6 +302,15 @@ MY_DEFAULT_RX_LED_PIN in your sketch instead to enable LEDs
 #endif // __avr_atmega1280__, __avr_atmega1284__, __avr_atmega2560__
 #endif // ARDUINO_ARCH_AVR
 #endif
+#ifdef DOXYGEN
+/**
+ * @def MY_RAM_ROUTING_TABLE_ENABLED
+ * @brief Automatically set if RAM routing table is enabled
+ *
+ * @see MY_RAM_ROUTING_TABLE_FEATURE
+ */
+#define MY_RAM_ROUTING_TABLE_ENABLED
+#endif
 
 // SOFTSPI
 #ifdef MY_SOFTSPI
@@ -287,6 +318,15 @@ MY_DEFAULT_RX_LED_PIN in your sketch instead to enable LEDs
 #error Soft SPI is not available on ESP8266
 #endif
 #include "drivers/AVR/DigitalIO/DigitalIO.h"
+#endif
+
+// SOFTSERIAL
+#if defined(MY_GSM_TX) != defined(MY_GSM_RX)
+#error Both, MY_GSM_TX and MY_GSM_RX need to be defined when using SoftSerial
+#endif
+
+#if defined(MY_GATEWAY_TINYGSM) && !defined(SerialAT) && (!defined(MY_GSM_TX) || !defined(MY_GSM_RX))
+#error You need to define either SerialAT or MY_GSM_RX and MY_GSM_TX pins
 #endif
 
 // POWER PIN
@@ -300,21 +340,15 @@ MY_DEFAULT_RX_LED_PIN in your sketch instead to enable LEDs
 
 // Transport drivers
 #if defined(MY_RADIO_RF24)
-#if defined(MY_RF24_ENABLE_ENCRYPTION)
-#include "drivers/AES/AES.cpp"
-#endif
 #include "drivers/RF24/RF24.cpp"
-#include "hal/transport/MyTransportRF24.cpp"
+#include "hal/transport/RF24/MyTransportRF24.cpp"
 #elif defined(MY_RADIO_NRF5_ESB)
-#if  !defined(ARDUINO_ARCH_NRF5)
+#if !defined(ARDUINO_ARCH_NRF5)
 #error No support for nRF5 radio on this platform
-#endif
-#if defined(MY_NRF5_ESB_ENABLE_ENCRYPTION)
-#include "drivers/AES/AES.cpp"
 #endif
 #include "drivers/NRF5/Radio.cpp"
 #include "drivers/NRF5/Radio_ESB.cpp"
-#include "hal/transport/MyTransportNRF5_ESB.cpp"
+#include "hal/transport/NRF5_ESB/MyTransportNRF5_ESB.cpp"
 #elif defined(MY_RS485)
 #if !defined(MY_RS485_HWSERIAL)
 #if defined(__linux__)
@@ -322,20 +356,17 @@ MY_DEFAULT_RX_LED_PIN in your sketch instead to enable LEDs
 #endif
 #include "drivers/AltSoftSerial/AltSoftSerial.cpp"
 #endif
-#include "hal/transport/MyTransportRS485.cpp"
+#include "hal/transport/RS485/MyTransportRS485.cpp"
 #elif defined(MY_RADIO_RFM69)
 #if defined(MY_RFM69_NEW_DRIVER)
 #include "drivers/RFM69/new/RFM69_new.cpp"
 #else
 #include "drivers/RFM69/old/RFM69_old.cpp"
 #endif
-#include "hal/transport/MyTransportRFM69.cpp"
+#include "hal/transport/RFM69/MyTransportRFM69.cpp"
 #elif defined(MY_RADIO_RFM95)
-#if defined(MY_RFM95_ENABLE_ENCRYPTION)
-#include "drivers/AES/AES.cpp"
-#endif
 #include "drivers/RFM95/RFM95.cpp"
-#include "hal/transport/MyTransportRFM95.cpp"
+#include "hal/transport/RFM95/MyTransportRFM95.cpp"
 #endif
 
 // PASSIVE MODE
@@ -381,18 +412,22 @@ MY_DEFAULT_RX_LED_PIN in your sketch instead to enable LEDs
 #include "core/MySensorsCore.cpp"
 
 // HW mains
-#if !defined(MY_CORE_ONLY)
-#if defined(ARDUINO_ARCH_ESP8266)
-#include "hal/architecture/MyMainESP8266.cpp"
+#if defined(ARDUINO_ARCH_AVR)
+#include "hal/architecture/AVR/MyMainAVR.cpp"
+#elif defined(ARDUINO_ARCH_SAMD)
+#include "hal/architecture/SAMD/MyMainSAMD.cpp"
+#elif defined(ARDUINO_ARCH_ESP8266)
+#include "hal/architecture/ESP8266/MyMainESP8266.cpp"
+#elif defined(ARDUINO_ARCH_NRF5)
+#include "hal/architecture/NRF5/MyMainNRF5.cpp"
+#elif defined(ARDUINO_ARCH_ESP32)
+#include "hal/architecture/ESP32/MyMainESP32.cpp"
 #elif defined(__linux__)
-#include "hal/architecture/MyMainLinux.cpp"
+#include "hal/architecture/Linux/MyMainLinuxGeneric.cpp"
 #elif defined(ARDUINO_ARCH_STM32F1)
-#include "hal/architecture/MyMainSTM32F1.cpp"
+#include "hal/architecture/STM32F1/MyMainSTM32F1.cpp"
 #elif defined(TEENSYDUINO)
-#include "hal/architecture/MyMainTeensy3.cpp"
-#else
-#include "hal/architecture/MyMainDefault.cpp"
-#endif
+#include "hal/architecture/Teensy3/MyMainTeensy3.cpp"
 #endif
 
 #endif

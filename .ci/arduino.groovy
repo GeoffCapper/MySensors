@@ -26,7 +26,9 @@ def parseWarnings(String key) {
  		excludePattern: '''.*/EEPROM\\.h,.*/Dns\\.cpp,.*/socket\\.cpp,.*/util\\.h,.*/Servo\\.cpp,
  											 .*/Adafruit_NeoPixel\\.cpp,.*/UIPEthernet.*,.*/SoftwareSerial\\.cpp,
  											 .*/pins_arduino\\.h,.*/Stream\\.cpp,.*/USBCore\\.cpp,.*/Wire\\.cpp,
- 											 .*/hardware/esp8266.*,.*/libraries/SD/.*''',
+ 											 .*/hardware/STM32F1.*,.*/hardware/esp8266.*,.*/hardware/espressif/esp32.*,
+											 .*/libraries/SD/.*''',
+
  		healthy: '', includePattern: '', messagesPattern: '',
  		parserConfigurations: [[parserName: 'Arduino/AVR', pattern: 'compiler_'+key+'.log']],
  		unHealthy: '', unstableNewAll: '0', unstableTotalAll: '0'
@@ -46,6 +48,9 @@ def buildMySensorsMicro(config, sketches, String key) {
 			if (sketches[sketch].path != config.library_root+'examples/GatewayESP8266/GatewayESP8266.ino' &&
 					sketches[sketch].path != config.library_root+'examples/GatewayESP8266MQTTClient/GatewayESP8266MQTTClient.ino' &&
 					sketches[sketch].path != config.library_root+'examples/GatewayESP8266OTA/GatewayESP8266OTA.ino' &&
+					sketches[sketch].path != config.library_root+'examples/GatewayGSMMQTTClient/GatewayGSMMQTTClient.ino' &&
+					sketches[sketch].path != config.library_root+'examples/GatewayESP32/GatewayESP32.ino' &&
+					sketches[sketch].path != config.library_root+'examples/GatewayESP32MQTTClient/GatewayESP32MQTTClient.ino' &&
 					sketches[sketch].path != config.library_root+'examples/SensebenderGatewaySerial/SensebenderGatewaySerial.ino') {
 				buildArduino(config, fqbn, sketches[sketch].path, key+'_MySensorsMicro')
 			}
@@ -60,7 +65,7 @@ def buildMySensorsMicro(config, sketches, String key) {
 	if (currentBuild.currentResult == 'UNSTABLE') {
 		config.pr.setBuildStatus(config, 'ERROR', 'Toll gate (MySensorsMicro - '+key+')', 'Warnings found', '${BUILD_URL}warnings2Result/new')
 		if (config.is_pull_request) {
-			error 'Termiated due to warnings found'
+			error 'Terminated due to warnings found'
 		}
 	} else if (currentBuild.currentResult == 'FAILURE') {
 		config.pr.setBuildStatus(config, 'FAILURE', 'Toll gate (MySensorsMicro - '+key+')', 'Build error', '${BUILD_URL}')
@@ -78,6 +83,9 @@ def buildMySensorsGw(config, sketches, String key) {
 					sketches[sketch].path != config.library_root+'examples/GatewayESP8266/GatewayESP8266.ino' &&
 					sketches[sketch].path != config.library_root+'examples/GatewayESP8266MQTTClient/GatewayESP8266MQTTClient.ino' &&
 					sketches[sketch].path != config.library_root+'examples/GatewayESP8266OTA/GatewayESP8266OTA.ino' &&
+					sketches[sketch].path != config.library_root+'examples/GatewayGSMMQTTClient/GatewayGSMMQTTClient.ino' &&
+					sketches[sketch].path != config.library_root+'examples/GatewayESP32/GatewayESP32.ino' &&
+					sketches[sketch].path != config.library_root+'examples/GatewayESP32MQTTClient/GatewayESP32MQTTClient.ino' &&
 					sketches[sketch].path != config.library_root+'examples/GatewaySerialRS485/GatewaySerialRS485.ino' &&
 					sketches[sketch].path != config.library_root+'examples/MotionSensorRS485/MotionSensorRS485.ino') {
 				buildArduino(config, fqbn, sketches[sketch].path, key+'_MySensorsGw')
@@ -93,43 +101,12 @@ def buildMySensorsGw(config, sketches, String key) {
 	if (currentBuild.currentResult == 'UNSTABLE') {
 		config.pr.setBuildStatus(config, 'ERROR', 'Toll gate (MySensorsGW - '+key+')', 'Warnings found', '${BUILD_URL}warnings2Result/new')
 		if (config.is_pull_request) {
-			error 'Termiated due to warnings found'
+			error 'Terminated due to warnings found'
 		}
 	} else if (currentBuild.currentResult == 'FAILURE') {
 		config.pr.setBuildStatus(config, 'FAILURE', 'Toll gate (MySensorsGW - '+key+')', 'Build error', '${BUILD_URL}')
 	} else {
 		config.pr.setBuildStatus(config, 'SUCCESS', 'Toll gate (MySensorsGW - '+key+')', 'Pass', '')
-	}
-}
-
-def buildArduinoNano(config, sketches, String key) {
-	def fqbn = '-fqbn arduino:avr:nano -prefs build.f_cpu=16000000 -prefs build.mcu=atmega328p'
-	config.pr.setBuildStatus(config, 'PENDING', 'Toll gate (Arduino Nano - '+key+')', 'Building...', '${BUILD_URL}flowGraphTable/')
-	try {
-		for (sketch = 0; sketch < sketches.size(); sketch++) {
-			if (sketches[sketch].path != config.library_root+'examples/GatewayESP8266/GatewayESP8266.ino' &&
-					sketches[sketch].path != config.library_root+'examples/GatewayESP8266MQTTClient/GatewayESP8266MQTTClient.ino' &&
-					sketches[sketch].path != config.library_root+'examples/GatewayESP8266OTA/GatewayESP8266OTA.ino' &&
-					sketches[sketch].path != config.library_root+'examples/SensebenderGatewaySerial/SensebenderGatewaySerial.ino') {
-				buildArduino(config, fqbn, sketches[sketch].path, key+'_ArduinoNano')
-			}
-		}
-	} catch (ex) {
-		echo "Build failed with: "+ ex.toString()
-		config.pr.setBuildStatus(config, 'FAILURE', 'Toll gate (Arduino Nano - '+key+')', 'Build error', '${BUILD_URL}')
-		throw ex
-	} finally {
-		parseWarnings(key+'_ArduinoNano')
-	}
-	if (currentBuild.currentResult == 'UNSTABLE') {
-		config.pr.setBuildStatus(config, 'ERROR', 'Toll gate (Arduino Nano - '+key+')', 'Warnings found', '${BUILD_URL}warnings2Result/new')
-		if (config.is_pull_request) {
-			error 'Termiated due to warnings found'
-		}
-	} else if (currentBuild.currentResult == 'FAILURE') {
-		config.pr.setBuildStatus(config, 'FAILURE', 'Toll gate (Arduino Nano - '+key+')', 'Build error', '${BUILD_URL}')
-	} else {
-		config.pr.setBuildStatus(config, 'SUCCESS', 'Toll gate (Arduino Nano - '+key+')', 'Pass', '')
 	}
 }
 
@@ -141,6 +118,8 @@ def buildArduinoUno(config, sketches, String key) {
 			if (sketches[sketch].path != config.library_root+'examples/GatewayESP8266/GatewayESP8266.ino' &&
 					sketches[sketch].path != config.library_root+'examples/GatewayESP8266MQTTClient/GatewayESP8266MQTTClient.ino' &&
 					sketches[sketch].path != config.library_root+'examples/GatewayESP8266OTA/GatewayESP8266OTA.ino' &&
+					sketches[sketch].path != config.library_root+'examples/GatewayESP32/GatewayESP32.ino' &&
+					sketches[sketch].path != config.library_root+'examples/GatewayESP32MQTTClient/GatewayESP32MQTTClient.ino' &&
 					sketches[sketch].path != config.library_root+'examples/SensebenderGatewaySerial/SensebenderGatewaySerial.ino') {
 				buildArduino(config, fqbn, sketches[sketch].path, key+'_ArduinoUno')
 			}
@@ -155,43 +134,12 @@ def buildArduinoUno(config, sketches, String key) {
 	if (currentBuild.currentResult == 'UNSTABLE') {
 		config.pr.setBuildStatus(config, 'ERROR', 'Toll gate (Arduino Uno - '+key+')', 'Warnings found', '${BUILD_URL}warnings2Result/new')
 		if (config.is_pull_request) {
-			error 'Termiated due to warnings found'
+			error 'Terminated due to warnings found'
 		}
 	} else if (currentBuild.currentResult == 'FAILURE') {
 		config.pr.setBuildStatus(config, 'FAILURE', 'Toll gate (Arduino Uno - '+key+')', 'Build error', '${BUILD_URL}')
 	} else {
 		config.pr.setBuildStatus(config, 'SUCCESS', 'Toll gate (Arduino Uno - '+key+')', 'Pass', '')
-	}
-}
-
-def buildArduinoPro(config, sketches, String key) {
-	def fqbn = '-fqbn arduino:avr:pro -prefs build.f_cpu=8000000 -prefs build.mcu=atmega328p'
-			config.pr.setBuildStatus(config, 'PENDING', 'Toll gate (Arduino Pro/Mini - '+key+')', 'Building...', '${BUILD_URL}flowGraphTable/')
-	try {
-		for (sketch = 0; sketch < sketches.size(); sketch++) {
-			if (sketches[sketch].path != config.library_root+'examples/GatewayESP8266/GatewayESP8266.ino' &&
-					sketches[sketch].path != config.library_root+'examples/GatewayESP8266MQTTClient/GatewayESP8266MQTTClient.ino' &&
-					sketches[sketch].path != config.library_root+'examples/GatewayESP8266OTA/GatewayESP8266OTA.ino' &&
-					sketches[sketch].path != config.library_root+'examples/SensebenderGatewaySerial/SensebenderGatewaySerial.ino') {
-				buildArduino(config, fqbn, sketches[sketch].path, key+'_ArduinoPro')
-			}
-		}
-	} catch (ex) {
-		echo "Build failed with: "+ ex.toString()
-		config.pr.setBuildStatus(config, 'FAILURE', 'Toll gate (Arduino Pro/Mini - '+key+')', 'Build error', '${BUILD_URL}')
-		throw ex
-	} finally {
-		parseWarnings(key+'_ArduinoPro')
-	}
-	if (currentBuild.currentResult == 'UNSTABLE') {
-		config.pr.setBuildStatus(config, config, 'ERROR', 'Toll gate (Arduino Pro/Mini - '+key+')', 'Warnings found', '${BUILD_URL}warnings2Result/new')
-		if (config.is_pull_request) {
-			error 'Termiated due to warnings found'
-		}
-	} else if (currentBuild.currentResult == 'FAILURE') {
-		config.pr.setBuildStatus(config, 'FAILURE', 'Toll gate (Arduino Pro/Mini - '+key+')', 'Build error', '${BUILD_URL}')
-	} else {
-		config.pr.setBuildStatus(config, 'SUCCESS', 'Toll gate (Arduino Pro/Mini - '+key+')', 'Pass', '')
 	}
 }
 
@@ -203,6 +151,8 @@ def buildArduinoMega(config, sketches, String key) {
 			if (sketches[sketch].path != config.library_root+'examples/GatewayESP8266/GatewayESP8266.ino' &&
 					sketches[sketch].path != config.library_root+'examples/GatewayESP8266MQTTClient/GatewayESP8266MQTTClient.ino' &&
 					sketches[sketch].path != config.library_root+'examples/GatewayESP8266OTA/GatewayESP8266OTA.ino' &&
+					sketches[sketch].path != config.library_root+'examples/GatewayESP32/GatewayESP32.ino' &&
+					sketches[sketch].path != config.library_root+'examples/GatewayESP32MQTTClient/GatewayESP32MQTTClient.ino' &&
 					sketches[sketch].path != config.library_root+'examples/SensebenderGatewaySerial/SensebenderGatewaySerial.ino') {
 				buildArduino(config, fqbn, sketches[sketch].path, key+'_ArduinoMega')
 			}
@@ -217,12 +167,45 @@ def buildArduinoMega(config, sketches, String key) {
 	if (currentBuild.currentResult == 'UNSTABLE') {
 		config.pr.setBuildStatus(config, config, 'ERROR', 'Toll gate (Arduino Mega - '+key+')', 'Warnings found', '${BUILD_URL}warnings2Result/new')
 		if (config.is_pull_request) {
-			error 'Termiated due to warnings found'
+			error 'Terminated due to warnings found'
 		}
 	} else if (currentBuild.currentResult == 'FAILURE') {
 		config.pr.setBuildStatus(config, 'FAILURE', 'Toll gate (Arduino Mega - '+key+')', 'Build error', '${BUILD_URL}')
 	} else {
 		config.pr.setBuildStatus(config, 'SUCCESS', 'Toll gate (Arduino Mega - '+key+')', 'Pass', '')
+	}
+}
+
+def buildSTM32F1(config, sketches, String key) {
+	def fqbn = '-fqbn stm32duino:STM32F1:genericSTM32F103C:device_variant=STM32F103C8,upload_method=DFUUploadMethod,cpu_speed=speed_72mhz,opt=osstd'
+	config.pr.setBuildStatus(config, 'PENDING', 'Toll gate (STM32F1 - '+key+')', 'Building...', '${BUILD_URL}flowGraphTable/')
+	try {
+		for (sketch = 0; sketch < sketches.size(); sketch++) {
+			if (sketches[sketch].path != config.library_root+'examples/GatewayESP8266/GatewayESP8266.ino' &&
+					sketches[sketch].path != config.library_root+'examples/GatewayESP8266MQTTClient/GatewayESP8266MQTTClient.ino' &&
+					sketches[sketch].path != config.library_root+'examples/GatewayESP8266OTA/GatewayESP8266OTA.ino' &&
+					sketches[sketch].path != config.library_root+'examples/GatewayESP32/GatewayESP32.ino' &&
+					sketches[sketch].path != config.library_root+'examples/GatewayESP32MQTTClient/GatewayESP32MQTTClient.ino' &&
+					sketches[sketch].path != config.library_root+'examples/SensebenderGatewaySerial/SensebenderGatewaySerial.ino') {
+				buildArduino(config, fqbn, sketches[sketch].path, key+'_STM32F1')
+			}
+		}
+	} catch (ex) {
+		echo "Build failed with: "+ ex.toString()
+		config.pr.setBuildStatus(config, 'FAILURE', 'Toll gate (STM32F1 - '+key+')', 'Build error', '${BUILD_URL}')
+		throw ex
+	} finally {
+		parseWarnings(key+'_STM32F1')
+	}
+	if (currentBuild.currentResult == 'UNSTABLE') {
+		config.pr.setBuildStatus(config, 'ERROR', 'Toll gate (STM32F1 - '+key+')', 'Warnings found', '${BUILD_URL}warnings2Result/new')
+		if (config.is_pull_request) {
+			error 'Terminated due to warnings found'
+		}
+	} else if (currentBuild.currentResult == 'FAILURE') {
+		config.pr.setBuildStatus(config, 'FAILURE', 'Toll gate (STM32F1 - '+key+')', 'Build error', '${BUILD_URL}')
+	} else {
+		config.pr.setBuildStatus(config, 'SUCCESS', 'Toll gate (STM32F1 - '+key+')', 'Pass', '')
 	}
 }
 
@@ -237,6 +220,9 @@ def buildEsp8266(config, sketches, String key) {
 					sketches[sketch].path != config.library_root+'examples/GatewaySerialRS485/GatewaySerialRS485.ino' &&
 					sketches[sketch].path != config.library_root+'examples/GatewayW5100/GatewayW5100.ino' &&
 					sketches[sketch].path != config.library_root+'examples/GatewayW5100MQTTClient/GatewayW5100MQTTClient.ino' &&
+					sketches[sketch].path != config.library_root+'examples/GatewayGSMMQTTClient/GatewayGSMMQTTClient.ino' &&
+					sketches[sketch].path != config.library_root+'examples/GatewayESP32/GatewayESP32.ino' &&
+					sketches[sketch].path != config.library_root+'examples/GatewayESP32MQTTClient/GatewayESP32MQTTClient.ino' &&
 					sketches[sketch].path != config.library_root+'examples/MotionSensorRS485/MotionSensorRS485.ino' &&
 					sketches[sketch].path != config.library_root+'examples/SensebenderGatewaySerial/SensebenderGatewaySerial.ino' &&
 					sketches[sketch].path != config.library_root+'examples/SoilMoistSensor/SoilMoistSensor.ino') {
@@ -253,7 +239,7 @@ def buildEsp8266(config, sketches, String key) {
 	if (currentBuild.currentResult == 'UNSTABLE') {
 		config.pr.setBuildStatus(config, 'ERROR', 'Toll gate (ESP8266 - '+key+')', 'Warnings found', '${BUILD_URL}warnings2Result/new')
 		if (config.is_pull_request) {
-			error 'Termiated due to warnings found'
+			error 'Terminated due to warnings found'
 		}
 	} else if (currentBuild.currentResult == 'FAILURE') {
 		config.pr.setBuildStatus(config, 'FAILURE', 'Toll gate (ESP8266 - '+key+')', 'Build error', '${BUILD_URL}')
@@ -261,6 +247,54 @@ def buildEsp8266(config, sketches, String key) {
 		config.pr.setBuildStatus(config, 'SUCCESS', 'Toll gate (ESP8266 - '+key+')', 'Pass', '')
 	}
 }
+
+def buildEsp32(config, sketches, String key) {
+	def fqbn = '-fqbn espressif:esp32:node32s -warnings=default -prefs build.f_cpu=80000000 -prefs build.mcu=esp32'
+	config.pr.setBuildStatus(config, 'PENDING', 'Toll gate (ESP32 - '+key+')', 'Building...', '${BUILD_URL}flowGraphTable/')
+	try {
+		for (sketch = 0; sketch < sketches.size(); sketch++) {
+			if (sketches[sketch].path != config.library_root+'examples/BatteryPoweredSensor/BatteryPoweredSensor.ino' &&
+					sketches[sketch].path != config.library_root+'examples/BinarySwitchSleepSensor/BinarySwitchSleepSensor.ino' &&
+					sketches[sketch].path != config.library_root+'examples/CO2Sensor/CO2Sensor.ino' &&
+					sketches[sketch].path != config.library_root+'examples/DustSensor/DustSensor.ino' &&
+					sketches[sketch].path != config.library_root+'examples/DustSensorDSM/DustSensorDSM.ino' &&
+					sketches[sketch].path != config.library_root+'examples/EnergyMeterPulseSensor/EnergyMeterPulseSensor.ino' &&
+					sketches[sketch].path != config.library_root+'examples/LightSensor/LightSensor.ino' &&
+					sketches[sketch].path != config.library_root+'examples/LogOTANode/LogOTANode.ino' &&
+					sketches[sketch].path != config.library_root+'examples/MotionSensor/MotionSensor.ino' &&
+					sketches[sketch].path != config.library_root+'examples/MotionSensorRS485/MotionSensorRS485.ino' &&
+					sketches[sketch].path != config.library_root+'examples/PassiveNode/PassiveNode.ino' &&		
+					sketches[sketch].path != config.library_root+'examples/GatewaySerialRS485/GatewaySerialRS485.ino' &&
+					sketches[sketch].path != config.library_root+'examples/GatewayW5100/GatewayW5100.ino' &&
+					sketches[sketch].path != config.library_root+'examples/GatewayW5100MQTTClient/GatewayW5100MQTTClient.ino' &&
+					sketches[sketch].path != config.library_root+'examples/GatewayGSMMQTTClient/GatewayGSMMQTTClient.ino' &&
+					sketches[sketch].path != config.library_root+'examples/GatewayESP8266/GatewayESP8266.ino' &&
+					sketches[sketch].path != config.library_root+'examples/GatewayESP8266MQTTClient/GatewayESP8266MQTTClient.ino' &&
+					sketches[sketch].path != config.library_root+'examples/GatewayESP8266OTA/GatewayESP8266OTA.ino' &&
+					sketches[sketch].path != config.library_root+'examples/SensebenderGatewaySerial/SensebenderGatewaySerial.ino' &&
+					sketches[sketch].path != config.library_root+'examples/MotionSensorRS485/MotionSensorRS485.ino' &&
+					sketches[sketch].path != config.library_root+'examples/SoilMoistSensor/SoilMoistSensor.ino') {
+				buildArduino(config, '-prefs build.flash_freq=80m -prefs build.flash_size=4MB '+fqbn, sketches[sketch].path, key+'_Esp32')
+			}
+		}
+	} catch (ex) {
+		echo "Build failed with: "+ ex.toString()
+		config.pr.setBuildStatus(config, 'FAILURE', 'Toll gate (ESP32 - '+key+')', 'Build error', '${BUILD_URL}')
+		throw ex
+	} finally {
+		parseWarnings(key+'_Esp32')
+	}
+	if (currentBuild.currentResult == 'UNSTABLE') {
+		config.pr.setBuildStatus(config, 'ERROR', 'Toll gate (ESP32 - '+key+')', 'Warnings found', '${BUILD_URL}warnings2Result/new')
+		if (config.is_pull_request) {
+			error 'Terminated due to warnings found'
+		}
+	} else if (currentBuild.currentResult == 'FAILURE') {
+		config.pr.setBuildStatus(config, 'FAILURE', 'Toll gate (ESP32 - '+key+')', 'Build error', '${BUILD_URL}')
+	} else {
+		config.pr.setBuildStatus(config, 'SUCCESS', 'Toll gate (ESP32 - '+key+')', 'Pass', '')
+	}
+} 
 
 def buildnRF5(config, sketches, String key) {
 	def fqbn = '-fqbn sandeepmistry:nRF5:Generic_nRF52832 -prefs build.f_cpu=16000000 -prefs build.mcu=cortex-m4'
@@ -272,7 +306,10 @@ def buildnRF5(config, sketches, String key) {
 					sketches[sketch].path != config.library_root+'examples/DustSensorDSM/DustSensorDSM.ino' &&
 					sketches[sketch].path != config.library_root+'examples/GatewayESP8266/GatewayESP8266.ino' &&
 					sketches[sketch].path != config.library_root+'examples/GatewayESP8266MQTTClient/GatewayESP8266MQTTClient.ino' &&
+					sketches[sketch].path != config.library_root+'examples/GatewayGSMMQTTClient/GatewayGSMMQTTClient.ino' &&
 					sketches[sketch].path != config.library_root+'examples/GatewayESP8266OTA/GatewayESP8266OTA.ino' &&
+					sketches[sketch].path != config.library_root+'examples/GatewayESP32/GatewayESP32.ino' &&
+					sketches[sketch].path != config.library_root+'examples/GatewayESP32MQTTClient/GatewayESP32MQTTClient.ino' &&
 					sketches[sketch].path != config.library_root+'examples/GatewaySerialRS485/GatewaySerialRS485.ino' &&
 					sketches[sketch].path != config.library_root+'examples/GatewayW5100/GatewayW5100.ino' &&
 					sketches[sketch].path != config.library_root+'examples/GatewayW5100MQTTClient/GatewayW5100MQTTClient.ino' &&
@@ -291,7 +328,7 @@ def buildnRF5(config, sketches, String key) {
 	if (currentBuild.currentResult == 'UNSTABLE') {
 		config.pr.setBuildStatus(config, 'ERROR', 'Toll gate (nRF5 - '+key+')', 'Warnings found', '${BUILD_URL}warnings2Result/new')
 		if (config.is_pull_request) {
-			error 'Termiated due to warnings found'
+			error 'Terminated due to warnings found'
 		}
 	} else if (currentBuild.currentResult == 'FAILURE') {
 		config.pr.setBuildStatus(config, 'FAILURE', 'Toll gate (nRF5 - '+key+')', 'Build error', '${BUILD_URL}')
@@ -304,7 +341,7 @@ def buildnRF52832(config, sketches, String key) {
 	def fqbn = '-fqbn=MySensors:nRF5:MyBoard_nRF52832:bootcode=none,lfclk=lfxo,reset=notenable -prefs build.f_cpu=16000000 -prefs build.mcu=cortex-m4'
 	config.pr.setBuildStatus(config, 'PENDING', 'Toll gate (nRF52832 - '+key+')', 'Building...', '${BUILD_URL}flowGraphTable/')
 	try {
-		buildArduino(config, fqbn, 'hardware/MySensors/nRF5/libraries/MyNRF5Board/examples/MyNRF5Board/MyNRF5Board.ino', key+'_nRF52832')
+		buildArduino(config, fqbn, 'hardware/MySensors/nRF5/libraries/MyBoardNRF5/examples/MyBoardNRF5/MyBoardNRF5.ino', key+'_nRF52832')
 	} catch (ex) {
 		echo "Build failed with: "+ ex.toString()
 		config.pr.setBuildStatus(config, 'FAILURE', 'Toll gate (nRF52832 - '+key+')', 'Build error', '${BUILD_URL}')
@@ -315,7 +352,7 @@ def buildnRF52832(config, sketches, String key) {
 	if (currentBuild.currentResult == 'UNSTABLE') {
 		config.pr.setBuildStatus(config, 'ERROR', 'Toll gate (nRF52832 - '+key+')', 'Warnings found', '${BUILD_URL}warnings2Result/new')
 		if (config.is_pull_request) {
-			error 'Termiated due to warnings found'
+			error 'Terminated due to warnings found'
 		}
 	} else if (currentBuild.currentResult == 'FAILURE') {
 		config.pr.setBuildStatus(config, 'FAILURE', 'Toll gate (nRF52832 - '+key+')', 'Build error', '${BUILD_URL}')
@@ -328,7 +365,7 @@ def buildnRF51822(config, sketches, String key) {
 	def fqbn = '-fqbn=MySensors:nRF5:MyBoard_nRF51822:chip=xxaa,bootcode=none,lfclk=lfxo -prefs build.f_cpu=16000000 -prefs build.mcu=cortex-m0'
 	config.pr.setBuildStatus(config, 'PENDING', 'Toll gate (nRF51822 - '+key+')', 'Building...', '${BUILD_URL}flowGraphTable/')
 	try {
-		buildArduino(config, fqbn, 'hardware/MySensors/nRF5/libraries/MyNRF5Board/examples/MyNRF5Board/MyNRF5Board.ino', key+'_nRF51822')
+		buildArduino(config, fqbn, 'hardware/MySensors/nRF5/libraries/MyBoardNRF5/examples/MyBoardNRF5/MyBoardNRF5.ino', key+'_nRF51822')
 	} catch (ex) {
 		echo "Build failed with: "+ ex.toString()
 		config.pr.setBuildStatus(config, 'FAILURE', 'Toll gate (nRF51822 - '+key+')', 'Build error', '${BUILD_URL}')
@@ -339,7 +376,7 @@ def buildnRF51822(config, sketches, String key) {
 	if (currentBuild.currentResult == 'UNSTABLE') {
 		config.pr.setBuildStatus(config, 'ERROR', 'Toll gate (nRF51822 - '+key+')', 'Warnings found', '${BUILD_URL}warnings2Result/new')
 		if (config.is_pull_request) {
-			error 'Termiated due to warnings found'
+			error 'Terminated due to warnings found'
 		}
 	} else if (currentBuild.currentResult == 'FAILURE') {
 		config.pr.setBuildStatus(config, 'FAILURE', 'Toll gate (nRF51822 - '+key+')', 'Build error', '${BUILD_URL}')

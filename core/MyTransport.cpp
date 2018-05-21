@@ -1,4 +1,4 @@
-/*
+﻿/*
  * The MySensors Arduino library handles the wireless radio link and protocol
  * between your home built sensors/actuators and HA controller of choice.
  * The sensors forms a self healing radio network with optional repeaters. Each
@@ -415,7 +415,7 @@ void transportInitialise(void)
 {
 	_transportSM.failureCounter = 0u;	// reset failure counter
 	transportLoadRoutingTable();		// load routing table to RAM (if feature enabled)
-	// intial state
+	// initial state
 	_transportSM.currentState = NULL;
 	transportSwitchSM(stInit);
 }
@@ -940,6 +940,8 @@ void transportProcessMessage(void)
 
 void transportInvokeSanityCheck(void)
 {
+	// Suppress this because the function may return a variable value in some configurations
+	// cppcheck-suppress knownConditionTrueFalse
 	if (!transportSanityCheck()) {
 		TRANSPORT_DEBUG(PSTR("!TSF:SAN:FAIL\n"));	// sanity check fail
 		transportSwitchSM(stFailure);

@@ -1,19 +1,12 @@
 #!groovy
 def call(config) {
 	config.pr.setBuildStatus(config, 'PENDING', 'Toll gate (Documentation)', 'Generating...', '${BUILD_URL}flowGraphTable/')
-	sh """#!/bin/bash +x
+	sh """#!/bin/bash
 				cd ${config.repository_root}
-				export PROJECTNUMBER=\$(
-					if [[ \$(git rev-parse --abbrev-ref HEAD) == "master" ]]; then
-						git describe --tags ;
-					else
-						git rev-parse --short HEAD ;
-					fi
-				)
-				echo 'WARN_LOGFILE=doxygen.log' >> Doxyfile && doxygen"""
+				Documentation/doxygen.sh"""
 	warnings canComputeNew: false, canResolveRelativePaths: false,
 		defaultEncoding: '',
-		excludePattern: '''.*/sha204_library\\.h,.*/drivers/Linux/.*,.*/cores/esp8266/.*,hardware/.*''',
+		excludePattern: '''.*/sha204_library\\.h,.*/drivers/Linux/.*,.*/drivers/TinyGSM/.*,.*/cores/esp8266/.*,hardware/.*''',
 		failedTotalAll: '', healthy: '', includePattern: '', messagesPattern: '',
 		parserConfigurations: [[parserName: 'Doxygen', pattern: config.repository_root+'doxygen.log']],
 		unHealthy: '', unstableTotalAll: '0'
@@ -26,7 +19,7 @@ def call(config) {
 		// Publish docs to API server
 		if (env.BRANCH_NAME == 'master') {
 			sh """#!/bin/bash
-						scp -r ${config.repository_root}Documentation/html docs@direct.openhardware.io"""
+						scp -r ${config.repository_root}Documentation/html docs@direct.openhardware.io:"""
 		} else if (env.BRANCH_NAME == 'development') {
 			sh """#!/bin/bash
 						scp -r ${config.repository_root}Documentation/html docs@direct.openhardware.io:beta"""
